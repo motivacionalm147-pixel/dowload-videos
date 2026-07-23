@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { VideoInfo, QualityOption, DownloadFormat } from '../types';
 import { DownloadModal } from './DownloadModal';
 import { 
@@ -15,13 +15,63 @@ import {
   Instagram, 
   Facebook, 
   FileVideo,
-  FileAudio
+  FileAudio,
+  Scissors,
+  Type,
+  Move,
+  Palette,
+  SlidersHorizontal,
+  Sparkles
 } from 'lucide-react';
 
 interface VideoResultCardProps {
   info: VideoInfo;
   onDownloadStart: (format: DownloadFormat, quality: QualityOption) => void;
 }
+
+const CUSTOM_FONTS = [
+  { name: 'Inter', family: "'Inter', sans-serif" },
+  { name: 'Montserrat', family: "'Montserrat', sans-serif" },
+  { name: 'Bebas Neue', family: "'Bebas Neue', cursive" },
+  { name: 'Lobster', family: "'Lobster', cursive" },
+  { name: 'Pacifico', family: "'Pacifico', cursive" },
+  { name: 'Anton', family: "'Anton', sans-serif" },
+  { name: 'Cinzel', family: "'Cinzel', serif" },
+  { name: 'Oswald', family: "'Oswald', sans-serif" },
+  { name: 'Playfair Display', family: "'Playfair Display', serif" },
+  { name: 'Raleway', family: "'Raleway', sans-serif" },
+  { name: 'Rubik', family: "'Rubik', sans-serif" },
+  { name: 'Permanent Marker', family: "'Permanent Marker', cursive" },
+  { name: 'Press Start 2P', family: "'Press Start 2P', cursive" },
+  { name: 'Satisfy', family: "'Satisfy', cursive" },
+  { name: 'Bungee', family: "'Bungee', cursive" },
+  { name: 'Righteous', family: "'Righteous', cursive" },
+  { name: 'Dancing Script', family: "'Dancing Script', cursive" },
+  { name: 'Bangers', family: "'Bangers', cursive" },
+  { name: 'Abril Fatface', family: "'Abril Fatface', serif" },
+  { name: 'Fredoka', family: "'Fredoka', sans-serif" },
+  { name: 'Courgette', family: "'Courgette', cursive" },
+  { name: 'Titan One', family: "'Titan One', cursive" },
+  { name: 'Alfa Slab One', family: "'Alfa Slab One', cursive" },
+  { name: 'Caveat', family: "'Caveat', cursive" },
+  { name: 'Russo One', family: "'Russo One', sans-serif" },
+  { name: 'Sacramento', family: "'Sacramento', cursive" },
+  { name: 'Shadows Into Light', family: "'Shadows Into Light', cursive" },
+  { name: 'Special Elite', family: "'Special Elite', cursive" },
+  { name: 'Orbitron', family: "'Orbitron', sans-serif" },
+  { name: 'Roboto', family: "'Roboto', sans-serif" },
+];
+
+const FONT_COLORS = [
+  { name: 'Branco', hex: '#FFFFFF' },
+  { name: 'Amarelo', hex: '#FACC15' },
+  { name: 'Rosa Neon', hex: '#F43F5E' },
+  { name: 'Ciano', hex: '#06B6D4' },
+  { name: 'Verde Neon', hex: '#22C55E' },
+  { name: 'Laranja', hex: '#FB923C' },
+  { name: 'Roxo', hex: '#A855F7' },
+  { name: 'Preto', hex: '#000000' },
+];
 
 export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownloadStart }) => {
   const [activeFormat, setActiveFormat] = useState<DownloadFormat>('mp4');
@@ -31,6 +81,22 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+
+  // Video Trimmer State
+  const [enableTrimmer, setEnableTrimmer] = useState(false);
+  const [startTime, setStartTime] = useState(0); // in seconds
+  const [endTime, setEndTime] = useState(120); // in seconds
+
+  // Custom Subtitle State
+  const [enableSubtitle, setEnableSubtitle] = useState(false);
+  const [subtitleText, setSubtitleText] = useState('Siga para mais vídeos! 🔥');
+  const [selectedFont, setSelectedFont] = useState(CUSTOM_FONTS[2]); // Bebas Neue default
+  const [selectedColor, setSelectedColor] = useState(FONT_COLORS[1]); // Amarelo default
+  const [fontSize, setFontSize] = useState(24);
+  const [textPosition, setTextPosition] = useState<{ x: number; y: number }>({ x: 50, y: 80 }); // percentage
+  const [isDraggingText, setIsDraggingText] = useState(false);
+
+  const previewBoxRef = useRef<HTMLDivElement>(null);
 
   // Filter qualities based on active format
   const availableQualities = info.qualities.filter(q => q.format === activeFormat);
@@ -53,6 +119,24 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2000);
     }
+  };
+
+  // Drag subtitle position handler
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDraggingText(true);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDraggingText || !previewBoxRef.current) return;
+    const rect = previewBoxRef.current.getBoundingClientRect();
+    const x = Math.min(Math.max(0, ((e.clientX - rect.left) / rect.width) * 100), 100);
+    const y = Math.min(Math.max(0, ((e.clientY - rect.top) / rect.height) * 100), 100);
+    setTextPosition({ x, y });
+  };
+
+  const handlePointerUp = () => {
+    setIsDraggingText(false);
   };
 
   const getPlatformBadge = () => {
@@ -107,9 +191,14 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
         {/* Media Main Details Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 mt-6 items-start">
           
-          {/* Thumbnail / Player Box */}
+          {/* Thumbnail / Player Box with Drag Subtitle Overlay */}
           <div className="md:col-span-5 relative group">
-            <div className="relative aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg">
+            <div 
+              ref={previewBoxRef}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              className="relative aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-lg select-none"
+            >
               {!isPlayingPreview ? (
                 <>
                   <img
@@ -126,7 +215,32 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
                       <Play className="w-5 h-5 ml-0.5 fill-white" />
                     </button>
                   </div>
-                  <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-950/80 backdrop-blur-md text-white text-[11px] font-mono font-medium border border-white/10 flex items-center gap-1">
+
+                  {/* Drag Subtitle Preview Overlay */}
+                  {enableSubtitle && subtitleText && (
+                    <div
+                      onPointerDown={handlePointerDown}
+                      style={{
+                        position: 'absolute',
+                        left: `${textPosition.x}%`,
+                        top: `${textPosition.y}%`,
+                        transform: 'translate(-50%, -50%)',
+                        fontFamily: selectedFont.family,
+                        color: selectedColor.hex,
+                        fontSize: `${fontSize}px`,
+                        textShadow: '0 2px 8px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.8)',
+                        cursor: 'grab',
+                        zIndex: 20
+                      }}
+                      className="px-2 py-1 rounded bg-black/40 backdrop-blur-xs border border-white/20 hover:border-amber-400 whitespace-nowrap tracking-wide font-bold"
+                      title="Clique e arraste para posicionar a legenda"
+                    >
+                      {subtitleText}
+                      <span className="ml-1 text-[9px] text-amber-300 opacity-60">✥ Arraste</span>
+                    </div>
+                  )}
+
+                  <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-slate-950/80 backdrop-blur-md text-white text-[11px] font-mono font-medium border border-white/10 flex items-center gap-1 z-10">
                     <Clock className="w-3 h-3 text-slate-400" />
                     {info.duration}
                   </div>
@@ -146,6 +260,14 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
                 </div>
               )}
             </div>
+
+            {/* Instruction if Subtitle Active */}
+            {enableSubtitle && (
+              <p className="text-[11px] text-amber-400 font-medium mt-2 flex items-center gap-1 justify-center">
+                <Move className="w-3 h-3" />
+                <span>Clique e arraste o texto na capa acima para escolher a posição!</span>
+              </p>
+            )}
           </div>
 
           {/* Title & Creator Details */}
@@ -167,6 +289,177 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
                   </span>
                 )}
               </div>
+
+              {/* Advanced Editing Tools Toggles */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                {/* Trimmer Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setEnableTrimmer(!enableTrimmer)}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all ${
+                    enableTrimmer
+                      ? 'bg-rose-500/20 border-rose-500/50 text-rose-300 shadow-lg shadow-rose-500/10'
+                      : 'bg-slate-950/60 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  }`}
+                >
+                  <Scissors className="w-4 h-4 text-rose-400" />
+                  <span>Cortar Vídeo ✂️</span>
+                </button>
+
+                {/* Subtitle Generator Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setEnableSubtitle(!enableSubtitle)}
+                  className={`flex items-center justify-center gap-2 p-3 rounded-2xl border text-xs font-bold transition-all ${
+                    enableSubtitle
+                      ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-lg shadow-amber-500/10'
+                      : 'bg-slate-950/60 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  }`}
+                >
+                  <Type className="w-4 h-4 text-amber-400" />
+                  <span>Criar Legenda 📝</span>
+                </button>
+              </div>
+
+              {/* SISTEMA 1: CORTAR VÍDEO (TRIMMER BAR) */}
+              {enableTrimmer && (
+                <div className="mb-6 p-4 rounded-2xl bg-rose-950/30 border border-rose-500/30 backdrop-blur-md animate-fade-in">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                      <Scissors className="w-4 h-4" />
+                      Ajuste os Pontos de Corte do Vídeo
+                    </span>
+                    <span className="text-[11px] font-mono text-rose-400 font-bold">
+                      Início: {startTime}s | Fim: {endTime}s
+                    </span>
+                  </div>
+
+                  {/* Dual Range Controls */}
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                        <span>Ponto de Início:</span>
+                        <span className="font-mono text-white font-bold">{startTime} seg</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={0}
+                        max={endTime - 1}
+                        value={startTime}
+                        onChange={(e) => setStartTime(Number(e.target.value))}
+                        className="w-full accent-rose-500 bg-slate-900 h-2 rounded-lg cursor-pointer"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                        <span>Ponto de Término:</span>
+                        <span className="font-mono text-white font-bold">{endTime} seg</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={startTime + 1}
+                        max={300}
+                        value={endTime}
+                        onChange={(e) => setEndTime(Number(e.target.value))}
+                        className="w-full accent-rose-500 bg-slate-900 h-2 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SISTEMA 2: GERADOR DE LEGENDAS COM 30 FONTES E POSIÇÃO */}
+              {enableSubtitle && (
+                <div className="mb-6 p-4 rounded-2xl bg-amber-950/30 border border-amber-500/30 backdrop-blur-md animate-fade-in space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      Personalize a Legenda do Vídeo
+                    </span>
+                  </div>
+
+                  {/* Text Input */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Texto da Legenda / Marca D'água:
+                    </label>
+                    <input
+                      type="text"
+                      value={subtitleText}
+                      onChange={(e) => setSubtitleText(e.target.value)}
+                      placeholder="Digite o texto da legenda..."
+                      className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-amber-500/30 text-white text-xs focus:outline-none focus:border-amber-400 font-medium"
+                    />
+                  </div>
+
+                  {/* 30 Custom Google Fonts Selector */}
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Escolha entre 30 Fontes Estilizadas:
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-1 bg-slate-950/80 rounded-xl border border-white/10">
+                      {CUSTOM_FONTS.map((font) => (
+                        <button
+                          key={font.name}
+                          type="button"
+                          onClick={() => setSelectedFont(font)}
+                          style={{ fontFamily: font.family }}
+                          className={`p-2 rounded-lg text-xs truncate text-center border transition-all ${
+                            selectedFont.name === font.name
+                              ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold shadow-md'
+                              : 'bg-slate-900 text-slate-300 border-slate-800 hover:border-slate-700'
+                          }`}
+                        >
+                          {font.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Color & Size Controls */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Colors */}
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                        Cor do Texto:
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {FONT_COLORS.map((c) => (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => setSelectedColor(c)}
+                            style={{ backgroundColor: c.hex }}
+                            className={`w-6 h-6 rounded-full border-2 transition-transform ${
+                              selectedColor.name === c.name
+                                ? 'scale-125 border-white ring-2 ring-amber-400'
+                                : 'border-slate-800 hover:scale-110'
+                            }`}
+                            title={c.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Size Slider */}
+                    <div>
+                      <div className="flex justify-between text-[11px] text-slate-300 mb-1">
+                        <span>Tamanho da Fonte:</span>
+                        <span className="font-mono font-bold text-amber-400">{fontSize}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={14}
+                        max={48}
+                        value={fontSize}
+                        onChange={(e) => setFontSize(Number(e.target.value))}
+                        className="w-full accent-amber-400 bg-slate-900 h-2 rounded-lg cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Format Toggle Bar (MP4 vs MP3) */}
               <div className="mb-6">
@@ -267,4 +560,5 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
     </div>
   );
 };
+
 
