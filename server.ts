@@ -180,63 +180,83 @@ async function startServer() {
 
       args.push("-o", fileTemplate, url);
 
-      console.log(`[DOWNLOAD] Starting: ${url} | format=${format} quality=${quality}`);
-      console.log(`[DOWNLOAD] yt-dlp args:`, args.join(" "));
+      const executeDownload = (downloadArgs: string[], isRetry: boolean = false) => {
+        execFile(YT_DLP_PATH, downloadArgs, { timeout: 1800000, maxBuffer: 200 * 1024 * 1024 }, (error, stdout, stderr) => {
+          if (error) {
+            console.error(`[DOWNLOAD] yt-dlp ERROR (retry=${isRetry}):`, error.message);
+            console.error("[DOWNLOAD] stderr:", stderr);
 
-      execFile(YT_DLP_PATH, args, { timeout: 1800000, maxBuffer: 200 * 1024 * 1024 }, (error, stdout, stderr) => {
-        if (error) {
-          console.error("[DOWNLOAD] yt-dlp ERROR:", error.message);
-          console.error("[DOWNLOAD] stderr:", stderr);
-          console.error("[DOWNLOAD] stdout:", stdout);
-          if (!res.headersSent) {
-            return res.status(500).send(`Erro ao processar o vídeo: ${stderr || error.message}`);
-          }
-          return;
-        }
+            // If YouTube bot block occurs and we haven't retried yet, attempt fallback client
+            if (!isRetry && (stderr.includes("Sign in to confirm") || stderr.includes("bot"))) {
+              console.log("[DOWNLOAD] Retrying with mobile fallback client...");
+              const fallbackArgs = [
+                "--no-playlist",
+                "--no-warnings",
+                "--extractor-args", "youtube:player_client=mweb,android",
+                "-f", "bestvideo+bestaudio/best",
+                "--merge-output-format", "mp4",
+                "-o", fileTemplate,
+                url
+              ];
+              return executeDownload(fallbackArgs, true);
+            }
 
-        try {
-          const files = fs.readdirSync(TEMP_DIR);
-          const downloadedFile = files.find(f => f.startsWith(`dl_${downloadId}.`));
-
-          if (!downloadedFile) {
-            console.error("[DOWNLOAD] Arquivo não encontrado. Files in TEMP_DIR:", files);
             if (!res.headersSent) {
-              return res.status(500).send("Arquivo baixado não foi localizado.");
+              if (stderr.includes("Sign in to confirm") || stderr.includes("bot")) {
+                return res.status(500).send("O YouTube bloqueou temporariamente este servidor de nuvem para este vídeo específico. Tente outro vídeo ou formato (ex: MP3).");
+              }
+              return res.status(500).send("Erro ao processar o vídeo. Tente outro formato ou link.");
             }
             return;
           }
 
-          const fullPath = path.join(TEMP_DIR, downloadedFile);
-          console.log(`[DOWNLOAD] Success: ${fullPath} (${fs.statSync(fullPath).size} bytes)`);
-
-          // Copy a permanent copy to the site's dedicated folder
           try {
-            const permanentPath = path.join(SAVED_DOWNLOADS_DIR, clientFilename);
-            fs.copyFileSync(fullPath, permanentPath);
-          } catch (copyErr) {
-            console.warn("Erro ao copiar para pasta própria:", copyErr);
-          }
+            const files = fs.readdirSync(TEMP_DIR);
+            const downloadedFile = files.find(f => f.startsWith(`dl_${downloadId}.`));
 
-          res.download(fullPath, clientFilename, (downloadErr) => {
-            if (downloadErr) {
-              console.warn("Erro ao entregar o arquivo via res.download:", downloadErr);
-            }
-            // Cleanup temp file
-            try {
-              if (fs.existsSync(fullPath)) {
-                fs.unlinkSync(fullPath);
+            if (!downloadedFile) {
+              console.error("[DOWNLOAD] Arquivo não encontrado. Files in TEMP_DIR:", files);
+              if (!res.headersSent) {
+                return res.status(500).send("Arquivo baixado não foi localizado.");
               }
-            } catch (unlinkErr) {
-              console.warn("Erro ao remover arquivo temporário:", unlinkErr);
+              return;
             }
-          });
-        } catch (readErr) {
-          console.error("Erro ao localizar arquivo de saída:", readErr);
-          if (!res.headersSent) {
-            return res.status(500).send("Erro ao enviar o download.");
+
+            const fullPath = path.join(TEMP_DIR, downloadedFile);
+            console.log(`[DOWNLOAD] Success: ${fullPath} (${fs.statSync(fullPath).size} bytes)`);
+
+            // Copy a permanent copy to the site's dedicated folder
+            try {
+              const permanentPath = path.join(SAVED_DOWNLOADS_DIR, clientFilename);
+              fs.copyFileSync(fullPath, permanentPath);
+            } catch (copyErr) {
+              console.warn("Erro ao copiar para pasta própria:", copyErr);
+            }
+
+            res.download(fullPath, clientFilename, (downloadErr) => {
+              if (downloadErr) {
+                console.warn("Erro ao entregar o arquivo via res.download:", downloadErr);
+              }
+              // Cleanup temp file
+              try {
+                if (fs.existsSync(fullPath)) {
+                  fs.unlinkSync(fullPath);
+                }
+              } catch (unlinkErr) {
+                console.warn("Erro ao remover arquivo temporário:", unlinkErr);
+              }
+            });
+          } catch (readErr) {
+            console.error("Erro ao localizar arquivo de saída:", readErr);
+            if (!res.headersSent) {
+              return res.status(500).send("Erro ao enviar o download.");
+            }
           }
-        }
-      });
+        });
+      };
+
+      console.log(`[DOWNLOAD] Starting: ${url} | format=${format} quality=${quality}`);
+      executeDownload(args, false);
     } catch (error) {
       console.error("Erro no handler de download:", error);
       return res.status(500).send("Erro ao realizar o download.");
