@@ -159,9 +159,12 @@ async function startServer() {
         "--user-agent", "Mozilla/5.0 (SmartTV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36",
       ];
 
-      // Add section trimming if specified
+      // Add section trimming if specified (downloads ONLY the exact fragment range via HTTP range requests)
       if (startSec !== null && endSec !== null && endSec > startSec) {
-        args.push("--download-sections", `*${startSec}-${endSec}`);
+        const startHms = `${Math.floor(startSec / 3600).toString().padStart(2, '0')}:${Math.floor((startSec % 3600) / 60).toString().padStart(2, '0')}:${Math.floor(startSec % 60).toString().padStart(2, '0')}`;
+        const endHms = `${Math.floor(endSec / 3600).toString().padStart(2, '0')}:${Math.floor((endSec % 3600) / 60).toString().padStart(2, '0')}:${Math.floor(endSec % 60).toString().padStart(2, '0')}`;
+        args.push("--download-sections", `*${startHms}-${endHms}`);
+        args.push("--force-keyframes-at-cuts");
       }
 
       // Add burn-in subtitle drawtext if specified for MP4
