@@ -27,18 +27,13 @@ export const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab, history
             className="flex items-center gap-3 cursor-pointer group"
             id="brand-logo"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-500 via-indigo-600 to-cyan-400 p-0.5 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-slate-950/90 rounded-[10px] flex items-center justify-center backdrop-blur-md">
-                <Download className="w-5 h-5 text-rose-400 group-hover:text-rose-300 transition-colors" />
-              </div>
+            <div className="w-10 h-10 rounded-xl overflow-hidden border border-white/20 shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform bg-slate-900">
+              <img src="/logo.jpg" alt="Mídia Download LK" className="w-full h-full object-cover" />
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-                  MediaGrab
-                </span>
-                <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-rose-500/20 text-rose-300 rounded border border-rose-500/30 backdrop-blur-md">
-                  HD
+                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-100 to-indigo-200 bg-clip-text text-transparent">
+                  Mídia Download LK
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 hidden sm:block">Baixar Vídeos & Áudios Grátis</p>
