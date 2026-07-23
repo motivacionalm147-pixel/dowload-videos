@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { execFile, execSync } from "child_process";
 import { createServer as createViteServer } from "vite";
-import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl } from "./server/extractors.ts";
+import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl, fetchCobaltDownloadUrl } from "./server/extractors.ts";
 import ffmpegPath from "ffmpeg-static";
 
 const isWin = process.platform === "win32";
@@ -186,14 +186,23 @@ async function startServer() {
             console.error(`[DOWNLOAD] yt-dlp ERROR (retry=${isRetry}):`, error.message);
             console.error("[DOWNLOAD] stderr:", stderr);
 
-            // Try Invidious API fallback stream if YouTube bot detection occurs
+            // Try Cobalt API / Invidious fallback stream if yt-dlp gets blocked
+            console.log(`[DOWNLOAD] Attempting Cobalt API fallback for URL: ${url}`);
+            const cobaltUrl = await fetchCobaltDownloadUrl(url, quality, format);
+            if (cobaltUrl) {
+              console.log(`[DOWNLOAD] Cobalt fallback stream URL found! Redirecting client.`);
+              if (!res.headersSent) {
+                return res.redirect(cobaltUrl);
+              }
+            }
+
             if (platform === "youtube") {
               const ytId = extractYouTubeId(url);
               if (ytId) {
                 console.log(`[DOWNLOAD] Attempting Invidious fallback stream for YouTube ID: ${ytId}`);
                 const streamUrl = await fetchYouTubeFallbackStreamUrl(ytId, quality, format);
                 if (streamUrl) {
-                  console.log(`[DOWNLOAD] Fallback stream URL found! Redirecting client to direct stream.`);
+                  console.log(`[DOWNLOAD] Invidious fallback stream URL found! Redirecting client.`);
                   if (!res.headersSent) {
                     return res.redirect(streamUrl);
                   }
