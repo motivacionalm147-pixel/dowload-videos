@@ -1,13 +1,26 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { execFile } from "child_process";
+import { execFile, execSync } from "child_process";
 import { createServer as createViteServer } from "vite";
 import { fetchVideoDetails, detectPlatform } from "./server/extractors.ts";
 import ffmpegPath from "ffmpeg-static";
 
 const isWin = process.platform === "win32";
-const YT_DLP_PATH = path.resolve(isWin ? "yt-dlp.exe" : "yt-dlp");
+
+// Resolve yt-dlp path: local binary first, then system-wide fallback
+function findYtDlp(): string {
+  const localBin = path.resolve(isWin ? "yt-dlp.exe" : "yt-dlp");
+  if (fs.existsSync(localBin)) return localBin;
+  // Fallback: try system-installed yt-dlp
+  try {
+    const systemPath = execSync(isWin ? "where yt-dlp" : "which yt-dlp", { encoding: "utf8" }).trim();
+    if (systemPath) return systemPath;
+  } catch {}
+  return localBin; // return local path even if not found, error will be caught later
+}
+
+const YT_DLP_PATH = findYtDlp();
 const TEMP_DIR = path.resolve("temp_downloads");
 const SAVED_DOWNLOADS_DIR = path.resolve("Downloads_Do_Site");
 
@@ -44,13 +57,31 @@ async function startServer() {
 
   app.use(express.json());
 
+  // Startup diagnostic log
+  console.log("=== MediaGrab Server Diagnostics ===");
+  console.log("Platform:", process.platform);
+  console.log("yt-dlp path:", YT_DLP_PATH, "| exists:", fs.existsSync(YT_DLP_PATH));
+  console.log("ffmpeg path:", ffmpegPath, "| exists:", ffmpegPath ? fs.existsSync(ffmpegPath) : false);
+  console.log("TEMP_DIR:", TEMP_DIR);
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+  console.log("====================================");
+
   // API Health Check
   app.get("/api/health", (_req, res) => {
-    res.json({ status: "ok", service: "VideoDownloaderAPI" });
+    res.json({
+      status: "ok",
+      service: "VideoDownloaderAPI",
+      platform: process.platform,
+      ytdlp: fs.existsSync(YT_DLP_PATH),
+      ffmpeg: ffmpegPath ? fs.existsSync(ffmpegPath) : false,
+    });
   });
 
-  // Open Downloads Folder in Windows File Explorer
+  // Open Downloads Folder in Windows File Explorer (only works locally)
   app.post("/api/open-downloads-folder", (_req, res) => {
+    if (!isWin) {
+      return res.json({ status: "ok", message: "Funcionalidade disponível apenas localmente no Windows.", path: SAVED_DOWNLOADS_DIR });
+    }
     try {
       if (!fs.existsSync(SAVED_DOWNLOADS_DIR)) {
         fs.mkdirSync(SAVED_DOWNLOADS_DIR, { recursive: true });
@@ -91,6 +122,12 @@ async function startServer() {
         return res.status(400).send("URL não informada.");
       }
 
+      // Check if yt-dlp exists
+      if (!fs.existsSync(YT_DLP_PATH)) {
+        console.error("yt-dlp não encontrado em:", YT_DLP_PATH);
+        return res.status(500).send("Servidor sem yt-dlp configurado. Contate o administrador.");
+      }
+
       const platform = detectPlatform(url);
       const platformName = platform === "unknown" ? "MEDIA" : platform.toUpperCase();
 
@@ -106,12 +143,15 @@ async function startServer() {
       const downloadId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
       const fileTemplate = path.join(TEMP_DIR, `dl_${downloadId}.%(ext)s`);
 
-      const args = [
-        "--ffmpeg-location", ffmpegPath || "",
-        "--js-runtimes", "node",
+      const args: string[] = [
         "--no-playlist",
         "--no-warnings",
       ];
+
+      // Only add ffmpeg-location if ffmpeg exists
+      if (ffmpegPath && fs.existsSync(ffmpegPath)) {
+        args.push("--ffmpeg-location", ffmpegPath);
+      }
 
       if (format === "mp3") {
         args.push("-x", "--audio-format", "mp3");
@@ -137,11 +177,16 @@ async function startServer() {
 
       args.push("-o", fileTemplate, url);
 
-      execFile(YT_DLP_PATH, args, { timeout: 1800000, maxBuffer: 200 * 1024 * 1024 }, (error, _stdout, stderr) => {
+      console.log(`[DOWNLOAD] Starting: ${url} | format=${format} quality=${quality}`);
+      console.log(`[DOWNLOAD] yt-dlp args:`, args.join(" "));
+
+      execFile(YT_DLP_PATH, args, { timeout: 1800000, maxBuffer: 200 * 1024 * 1024 }, (error, stdout, stderr) => {
         if (error) {
-          console.error("Erro no processamento do vídeo com yt-dlp:", error, stderr);
+          console.error("[DOWNLOAD] yt-dlp ERROR:", error.message);
+          console.error("[DOWNLOAD] stderr:", stderr);
+          console.error("[DOWNLOAD] stdout:", stdout);
           if (!res.headersSent) {
-            return res.status(500).send("Erro ao processar o vídeo. Tente outro link ou formato.");
+            return res.status(500).send(`Erro ao processar o vídeo: ${stderr || error.message}`);
           }
           return;
         }
@@ -151,6 +196,7 @@ async function startServer() {
           const downloadedFile = files.find(f => f.startsWith(`dl_${downloadId}.`));
 
           if (!downloadedFile) {
+            console.error("[DOWNLOAD] Arquivo não encontrado. Files in TEMP_DIR:", files);
             if (!res.headersSent) {
               return res.status(500).send("Arquivo baixado não foi localizado.");
             }
@@ -158,6 +204,7 @@ async function startServer() {
           }
 
           const fullPath = path.join(TEMP_DIR, downloadedFile);
+          console.log(`[DOWNLOAD] Success: ${fullPath} (${fs.statSync(fullPath).size} bytes)`);
 
           // Copy a permanent copy to the site's dedicated folder
           try {
@@ -214,4 +261,3 @@ async function startServer() {
 }
 
 startServer();
-

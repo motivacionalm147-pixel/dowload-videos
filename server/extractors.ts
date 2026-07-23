@@ -1,9 +1,21 @@
 import { PlatformType, VideoInfo, QualityOption } from '../src/types';
-import { execFile } from 'child_process';
+import { execFile, execSync } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 
 const isWin = process.platform === "win32";
-const YT_DLP_PATH = path.resolve(isWin ? "yt-dlp.exe" : "yt-dlp");
+
+function findYtDlp(): string {
+  const localBin = path.resolve(isWin ? "yt-dlp.exe" : "yt-dlp");
+  if (fs.existsSync(localBin)) return localBin;
+  try {
+    const systemPath = execSync(isWin ? "where yt-dlp" : "which yt-dlp", { encoding: "utf8" }).trim();
+    if (systemPath) return systemPath;
+  } catch {}
+  return localBin;
+}
+
+const YT_DLP_PATH = findYtDlp();
 
 export function detectPlatform(url: string): PlatformType {
   const lower = url.trim().toLowerCase();
@@ -146,7 +158,6 @@ export function getYtDlpJson(url: string): Promise<any> {
     const args = [
       '-j',
       '--no-playlist',
-      '--js-runtimes', 'node',
       '--no-warnings',
       url
     ];
