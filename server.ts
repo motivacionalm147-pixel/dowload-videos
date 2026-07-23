@@ -137,6 +137,14 @@ async function startServer() {
         .replace(/\s+/g, "_")
         .slice(0, 50) || "video";
 
+      const startSec = req.query.start ? parseInt(req.query.start as string, 10) : null;
+      const endSec = req.query.end ? parseInt(req.query.end as string, 10) : null;
+      const subtitleText = (req.query.subtitle as string) || "";
+      const fontColor = (req.query.fontColor as string) || "white";
+      const fontSize = (req.query.fontSize as string) || "24";
+      const posX = (req.query.posX as string) || "50";
+      const posY = (req.query.posY as string) || "80";
+
       const extension = format === "mp3" ? "mp3" : "mp4";
       const clientFilename = `${platformName}_${cleanTitle}_${quality}.${extension}`;
 
@@ -150,6 +158,21 @@ async function startServer() {
         "--extractor-args", "youtube:player_client=tv_embedded,android,ios,mweb",
         "--user-agent", "Mozilla/5.0 (SmartTV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36",
       ];
+
+      // Add section trimming if specified
+      if (startSec !== null && endSec !== null && endSec > startSec) {
+        args.push("--download-sections", `*${startSec}-${endSec}`);
+      }
+
+      // Add burn-in subtitle drawtext if specified for MP4
+      if (subtitleText && format === "mp4") {
+        const cleanSubText = subtitleText.replace(/[':\\]/g, "");
+        const hexColor = fontColor.replace("#", "");
+        args.push(
+          "--postprocessor-args",
+          `ffmpeg:-vf "drawtext=text='${cleanSubText}':fontcolor=0x${hexColor}:fontsize=${fontSize}:x=(w-tw)*${posX}/100:y=(h-th)*${posY}/100:shadowcolor=black:shadowx=2:shadowy=2"`
+        );
+      }
 
       // Only add ffmpeg-location if ffmpeg exists
       if (ffmpegPath && fs.existsSync(ffmpegPath)) {

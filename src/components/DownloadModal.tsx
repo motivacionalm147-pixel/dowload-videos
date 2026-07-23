@@ -24,6 +24,7 @@ interface DownloadModalProps {
   info: VideoInfo;
   format: DownloadFormat;
   quality: QualityOption;
+  customDownloadUrl?: string;
   onSaveHistory: () => void;
 }
 
@@ -33,6 +34,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
   info,
   format,
   quality,
+  customDownloadUrl,
   onSaveHistory
 }) => {
   const [progress, setProgress] = useState(0);
@@ -59,17 +61,17 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
     const progressInterval = setInterval(() => {
       if (!isSubscribed) return;
       setProgress((prev) => {
-        if (prev < 30) {
+        if (prev < 35) {
           setCurrentStep(1);
-          setStatusText('Conectando ao servidor e solicitando mídia...');
+          setStatusText('Conectando ao servidor e analisando mídia...');
           return prev + 5;
-        } else if (prev < 70) {
+        } else if (prev < 75) {
           setCurrentStep(2);
-          setStatusText('Baixando faixas de vídeo e áudio em alta qualidade...');
+          setStatusText('Baixando fluxo de vídeo e aplicando edições/legendas...');
           return prev + 3;
         } else if (prev < 92) {
           setCurrentStep(3);
-          setStatusText('Processando e unindo faixas via ffmpeg (vídeo pesado)...');
+          setStatusText('Processando e unindo arquivo via ffmpeg...');
           return prev + 1;
         }
         return 92;
@@ -77,7 +79,7 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
     }, 400);
 
     // Trigger actual download via fetch API
-    const downloadUrl = `/api/download?url=${encodeURIComponent(info.url)}&format=${format}&quality=${quality.qualityKey}&title=${encodeURIComponent(info.title)}`;
+    const downloadUrl = customDownloadUrl || `/api/download?url=${encodeURIComponent(info.url)}&format=${format}&quality=${quality.qualityKey}&title=${encodeURIComponent(info.title)}`;
 
     fetch(downloadUrl)
       .then(async (res) => {
