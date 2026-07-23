@@ -185,8 +185,47 @@ export default function App() {
               />
             )}
 
-            {/* Platform features and FAQ */}
-            <FeaturesAndFAQ />
+            {/* Quick Recent Downloads Section on Main Page */}
+            {!videoInfo && history.length > 0 && (
+              <div className="max-w-4xl mx-auto px-4 mt-4 mb-12">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                    <span>Últimos Vídeos Baixados</span>
+                  </h3>
+                  <button
+                    onClick={() => setActiveTab('history')}
+                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
+                  >
+                    Ver Histórico Completo ({history.length}) →
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {history.slice(0, 3).map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setActiveTab('history')}
+                      className="group cursor-pointer glass-card border border-white/10 rounded-2xl p-3 flex items-center gap-3 hover:border-indigo-500/50 transition-all"
+                    >
+                      <img
+                        src={item.thumbnail}
+                        alt={item.title}
+                        className="w-14 h-10 rounded-xl object-cover shrink-0 border border-slate-700 group-hover:scale-105 transition-transform"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-slate-200 truncate group-hover:text-indigo-300 transition-colors">
+                          {item.title}
+                        </h4>
+                        <p className="text-[10px] text-slate-400 font-mono">
+                          {item.format.toUpperCase()} • {item.quality}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </>
         )}
 
