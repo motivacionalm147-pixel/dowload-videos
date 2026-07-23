@@ -8,7 +8,7 @@ import { FeaturesAndFAQ } from './components/FeaturesAndFAQ';
 import { Footer } from './components/Footer';
 import { VideoInfo, PlatformType, DownloadHistoryItem, DownloadFormat, QualityOption } from './types';
 import { detectPlatform } from './utils';
-import { AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
 
 const HISTORY_STORAGE_KEY = 'mediagrab_download_history_v1';
 
@@ -159,6 +159,21 @@ export default function App() {
               isLoading={isLoading}
               detectedPlatform={detectedPlatform}
             />
+
+            {/* Search Loading Indicator Card */}
+            {isLoading && (
+              <div className="max-w-2xl mx-auto px-4 mb-12 animate-fade-in">
+                <div className="glass-card border border-indigo-500/30 rounded-3xl p-8 shadow-2xl backdrop-blur-2xl text-center flex flex-col items-center justify-center">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-rose-500 via-indigo-600 to-cyan-400 p-0.5 mb-4 shadow-xl shadow-indigo-500/30">
+                    <div className="w-full h-full bg-slate-950 rounded-full flex items-center justify-center">
+                      <Loader2 className="w-7 h-7 text-rose-400 animate-spin" />
+                    </div>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-white mb-1">Localizando Mídia e Analisando Qualidades...</h3>
+                  <p className="text-xs text-slate-400">Verificando disponibilidades em Full HD (1080p) e áudio MP3 (320k).</p>
+                </div>
+              </div>
+            )}
 
             {/* Error banner if search fails */}
             {errorMessage && (
