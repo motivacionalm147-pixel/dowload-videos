@@ -1,0 +1,6 @@
+{
+  "name": "Baixar Vídeos - YouTube, TikTok, Instagram, Facebook",
+  "description": "Baixe vídeos e áudios MP4 e MP3 de YouTube, TikTok, Instagram e Facebook em alta qualidade de forma rápida e simples.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
