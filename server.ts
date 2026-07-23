@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { execFile, execSync } from "child_process";
 import { createServer as createViteServer } from "vite";
-import { fetchVideoDetails, detectPlatform } from "./server/extractors.ts";
+import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl } from "./server/extractors.ts";
 import ffmpegPath from "ffmpeg-static";
 
 const isWin = process.platform === "win32";
@@ -181,24 +181,24 @@ async function startServer() {
       args.push("-o", fileTemplate, url);
 
       const executeDownload = (downloadArgs: string[], isRetry: boolean = false) => {
-        execFile(YT_DLP_PATH, downloadArgs, { timeout: 1800000, maxBuffer: 200 * 1024 * 1024 }, (error, stdout, stderr) => {
+        execFile(YT_DLP_PATH, downloadArgs, { timeout: 1800000, maxBuffer: 200 * 1024 * 1024 }, async (error, stdout, stderr) => {
           if (error) {
             console.error(`[DOWNLOAD] yt-dlp ERROR (retry=${isRetry}):`, error.message);
             console.error("[DOWNLOAD] stderr:", stderr);
 
-            // If YouTube bot block occurs and we haven't retried yet, attempt fallback client
-            if (!isRetry && (stderr.includes("Sign in to confirm") || stderr.includes("bot"))) {
-              console.log("[DOWNLOAD] Retrying with mobile fallback client...");
-              const fallbackArgs = [
-                "--no-playlist",
-                "--no-warnings",
-                "--extractor-args", "youtube:player_client=mweb,android",
-                "-f", "bestvideo+bestaudio/best",
-                "--merge-output-format", "mp4",
-                "-o", fileTemplate,
-                url
-              ];
-              return executeDownload(fallbackArgs, true);
+            // Try Invidious API fallback stream if YouTube bot detection occurs
+            if (platform === "youtube") {
+              const ytId = extractYouTubeId(url);
+              if (ytId) {
+                console.log(`[DOWNLOAD] Attempting Invidious fallback stream for YouTube ID: ${ytId}`);
+                const streamUrl = await fetchYouTubeFallbackStreamUrl(ytId, quality, format);
+                if (streamUrl) {
+                  console.log(`[DOWNLOAD] Fallback stream URL found! Redirecting client to direct stream.`);
+                  if (!res.headersSent) {
+                    return res.redirect(streamUrl);
+                  }
+                }
+              }
             }
 
             if (!res.headersSent) {

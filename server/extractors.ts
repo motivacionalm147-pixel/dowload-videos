@@ -40,6 +40,37 @@ export function extractYouTubeId(url: string): string | null {
   return (match && match[2].length === 11) ? match[2] : null;
 }
 
+const INVIDIOUS_INSTANCES = [
+  'https://inv.tux.pizza',
+  'https://invidious.nerdvpn.de',
+  'https://invidious.projectsegfau.lt'
+];
+
+export async function fetchYouTubeFallbackStreamUrl(videoId: string, quality: string, format: string): Promise<string | null> {
+  for (const instance of INVIDIOUS_INSTANCES) {
+    try {
+      const res = await fetch(`${instance}/api/v1/videos/${videoId}`);
+      if (!res.ok) continue;
+      const data: any = await res.json();
+      
+      if (format === 'mp3') {
+        const audioStream = data.adaptiveFormats?.find((f: any) => f.type?.includes('audio'));
+        if (audioStream?.url) return audioStream.url;
+      }
+      
+      const formatStreams = data.formatStreams || [];
+      if (formatStreams.length > 0) {
+        let matched = formatStreams.find((f: any) => f.qualityLabel?.includes(quality));
+        if (!matched) matched = formatStreams[0];
+        if (matched?.url) return matched.url;
+      }
+    } catch (e) {
+      console.warn(`Fallback fetch failed on ${instance}:`, e);
+    }
+  }
+  return null;
+}
+
 export function formatDuration(seconds?: number): string {
   if (!seconds || isNaN(seconds)) return '00:00';
   const hrs = Math.floor(seconds / 3600);
