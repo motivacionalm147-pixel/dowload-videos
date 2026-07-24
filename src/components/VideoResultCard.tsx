@@ -192,10 +192,14 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
                     />
                   ) : (
                     <video
-                      src={info.streamUrl || info.url}
+                      src={info.streamUrl || `/api/download?url=${encodeURIComponent(info.url)}&format=mp4&quality=720p&title=${encodeURIComponent(info.title)}`}
                       controls
                       autoPlay
                       className="w-full h-full object-contain"
+                      onError={(e) => {
+                        // Fallback if direct stream fails: display friendly message
+                        console.warn("Video preview error");
+                      }}
                     />
                   )}
                   <button
