@@ -98,11 +98,55 @@ export async function fetchCobaltDownloadUrl(url: string, quality: string, forma
 }
 
 export async function fetchYouTubeFallbackStreamUrl(videoId: string, quality: string, format: string): Promise<string | null> {
-  // Try Piped API instances
+  const fullUrl = `https://www.youtube.com/watch?v=${videoId}`;
+
+  // 1. Try Rapid / Y2Mate API proxy
+  try {
+    const y2Res = await fetch("https://www.y2mate.com/mates/analyzeV2/ajax", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      },
+      body: `k_query=${encodeURIComponent(fullUrl)}&k_page=home&hl=en&q_auto=0`
+    });
+
+    if (y2Res.ok) {
+      const y2Data: any = await y2Res.json();
+      if (y2Data && y2Data.links) {
+        const targetSection = format === 'mp3' ? y2Data.links.mp3 : y2Data.links.mp4;
+        if (targetSection) {
+          const keys = Object.keys(targetSection);
+          if (keys.length > 0) {
+            const selectedKey = keys[0];
+            const convertRes = await fetch("https://www.y2mate.com/mates/convertV2/index", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+              },
+              body: `vid=${videoId}&k=${encodeURIComponent(targetSection[selectedKey].k)}`
+            });
+            if (convertRes.ok) {
+              const convertData: any = await convertRes.json();
+              if (convertData && convertData.dlink) {
+                console.log("[PROXY] Y2Mate proxy direct link obtained!");
+                return convertData.dlink;
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Y2Mate proxy error:", err);
+  }
+
+  // 2. Try Piped API instances
   for (const instance of PIPED_INSTANCES) {
     try {
       const res = await fetch(`${instance}/streams/${videoId}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0' }
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
       });
       if (!res.ok) continue;
       const data: any = await res.json();
@@ -116,7 +160,6 @@ export async function fetchYouTubeFallbackStreamUrl(videoId: string, quality: st
 
       const videoStreams = data.videoStreams || [];
       if (videoStreams.length > 0) {
-        // Find format with audio & video combined
         const combined = videoStreams.find((v: any) => v.videoOnly === false);
         if (combined?.url) return combined.url;
         if (videoStreams[0]?.url) return videoStreams[0].url;
@@ -126,7 +169,7 @@ export async function fetchYouTubeFallbackStreamUrl(videoId: string, quality: st
     }
   }
 
-  // Try Invidious API instances
+  // 3. Try Invidious API instances
   for (const instance of INVIDIOUS_INSTANCES) {
     try {
       const res = await fetch(`${instance}/api/v1/videos/${videoId}`);
