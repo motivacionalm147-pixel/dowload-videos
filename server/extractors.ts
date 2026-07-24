@@ -312,11 +312,13 @@ export function getYtDlpJson(url: string): Promise<any> {
     const cookiesPath = path.resolve("cookies.txt");
     const args = [
       '-j',
+      '--skip-download',
       '--no-playlist',
       '--no-warnings',
+      '--no-check-certificates',
       '--force-ipv4',
-      '--extractor-args', 'youtube:player_client=tv_embedded,android,ios,mweb',
-      '--user-agent', 'Mozilla/5.0 (SmartTV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36',
+      '--extractor-args', 'youtube:player_client=mweb,ios,android',
+      '--user-agent', 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
     ];
 
     if (fs.existsSync(cookiesPath)) {

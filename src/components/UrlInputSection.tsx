@@ -95,12 +95,18 @@ export const UrlInputSection: React.FC<UrlInputSectionProps> = ({
               )}
             </div>
 
-            {/* Input Field */}
+            {/* Input Field with Instant Auto-Search on Paste */}
             <input
               id="video-url-input"
               type="text"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setUrl(val);
+                if (val && (val.includes('http://') || val.includes('https://')) && val.trim().length > 15) {
+                  onSearch(val.trim());
+                }
+              }}
               placeholder="Cole o link do vídeo aqui..."
               className="w-full bg-transparent text-white placeholder-slate-500 text-sm sm:text-base px-2 py-3 focus:outline-none"
             />
