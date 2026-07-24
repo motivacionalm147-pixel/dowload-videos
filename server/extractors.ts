@@ -43,7 +43,14 @@ export function extractYouTubeId(url: string): string | null {
 const INVIDIOUS_INSTANCES = [
   'https://inv.tux.pizza',
   'https://invidious.nerdvpn.de',
-  'https://invidious.projectsegfau.lt'
+  'https://invidious.projectsegfau.lt',
+  'https://invidious.drgns.space'
+];
+
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://api.piped.privacydev.net',
+  'https://pipedapi.adminforge.de'
 ];
 
 export async function fetchCobaltDownloadUrl(url: string, quality: string, format: string): Promise<string | null> {
@@ -81,6 +88,35 @@ export async function fetchCobaltDownloadUrl(url: string, quality: string, forma
 }
 
 export async function fetchYouTubeFallbackStreamUrl(videoId: string, quality: string, format: string): Promise<string | null> {
+  // Try Piped API instances
+  for (const instance of PIPED_INSTANCES) {
+    try {
+      const res = await fetch(`${instance}/streams/${videoId}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      if (!res.ok) continue;
+      const data: any = await res.json();
+
+      if (format === 'mp3') {
+        const audioStreams = data.audioStreams || [];
+        if (audioStreams.length > 0 && audioStreams[0].url) {
+          return audioStreams[0].url;
+        }
+      }
+
+      const videoStreams = data.videoStreams || [];
+      if (videoStreams.length > 0) {
+        // Find format with audio & video combined
+        const combined = videoStreams.find((v: any) => v.videoOnly === false);
+        if (combined?.url) return combined.url;
+        if (videoStreams[0]?.url) return videoStreams[0].url;
+      }
+    } catch (e) {
+      console.warn(`Piped API fetch failed on ${instance}:`, e);
+    }
+  }
+
+  // Try Invidious API instances
   for (const instance of INVIDIOUS_INSTANCES) {
     try {
       const res = await fetch(`${instance}/api/v1/videos/${videoId}`);
@@ -99,7 +135,7 @@ export async function fetchYouTubeFallbackStreamUrl(videoId: string, quality: st
         if (matched?.url) return matched.url;
       }
     } catch (e) {
-      console.warn(`Fallback fetch failed on ${instance}:`, e);
+      console.warn(`Invidious fetch failed on ${instance}:`, e);
     }
   }
   return null;

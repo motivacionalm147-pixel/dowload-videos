@@ -137,14 +137,6 @@ async function startServer() {
         .replace(/\s+/g, "_")
         .slice(0, 50) || "video";
 
-      const startSec = req.query.start ? parseInt(req.query.start as string, 10) : null;
-      const endSec = req.query.end ? parseInt(req.query.end as string, 10) : null;
-      const subtitleText = (req.query.subtitle as string) || "";
-      const fontColor = (req.query.fontColor as string) || "white";
-      const fontSize = (req.query.fontSize as string) || "24";
-      const posX = (req.query.posX as string) || "50";
-      const posY = (req.query.posY as string) || "80";
-
       const extension = format === "mp3" ? "mp3" : "mp4";
       const clientFilename = `${platformName}_${cleanTitle}_${quality}.${extension}`;
 
@@ -155,27 +147,9 @@ async function startServer() {
         "--no-playlist",
         "--no-warnings",
         "--force-ipv4",
-        "--extractor-args", "youtube:player_client=tv_embedded,android,ios,mweb",
-        "--user-agent", "Mozilla/5.0 (SmartTV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36",
+        "--extractor-args", "youtube:player_client=android_creator,android,ios,mweb,web",
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       ];
-
-      // Add section trimming if specified (downloads ONLY the exact fragment range via HTTP range requests)
-      if (startSec !== null && endSec !== null && endSec > startSec) {
-        const startHms = `${Math.floor(startSec / 3600).toString().padStart(2, '0')}:${Math.floor((startSec % 3600) / 60).toString().padStart(2, '0')}:${Math.floor(startSec % 60).toString().padStart(2, '0')}`;
-        const endHms = `${Math.floor(endSec / 3600).toString().padStart(2, '0')}:${Math.floor((endSec % 3600) / 60).toString().padStart(2, '0')}:${Math.floor(endSec % 60).toString().padStart(2, '0')}`;
-        args.push("--download-sections", `*${startHms}-${endHms}`);
-        args.push("--force-keyframes-at-cuts");
-      }
-
-      // Add burn-in subtitle drawtext if specified for MP4
-      if (subtitleText && format === "mp4") {
-        const cleanSubText = subtitleText.replace(/[':\\]/g, "");
-        const hexColor = fontColor.replace("#", "");
-        args.push(
-          "--postprocessor-args",
-          `ffmpeg:-vf "drawtext=text='${cleanSubText}':fontcolor=0x${hexColor}:fontsize=${fontSize}:x=(w-tw)*${posX}/100:y=(h-th)*${posY}/100:shadowcolor=black:shadowx=2:shadowy=2"`
-        );
-      }
 
       // Only add ffmpeg-location if ffmpeg exists
       if (ffmpegPath && fs.existsSync(ffmpegPath)) {
@@ -199,7 +173,7 @@ async function startServer() {
         else if (quality.includes("360")) height = 360;
 
         args.push(
-          "-f", `bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`,
+          "-f", `best[height<=${height}][ext=mp4]/bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`,
           "--merge-output-format", "mp4"
         );
       }
