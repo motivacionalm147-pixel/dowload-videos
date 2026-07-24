@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { execFile, execSync } from "child_process";
 import { createServer as createViteServer } from "vite";
-import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl, fetchCobaltDownloadUrl } from "./server/extractors.ts";
+import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl, fetchCobaltDownloadUrl, resolveTikTokUrl } from "./server/extractors.ts";
 import ffmpegPath from "ffmpeg-static";
 
 const isWin = process.platform === "win32";
@@ -111,7 +111,7 @@ async function startServer() {
   });
 
   // Download File Endpoint
-  app.get("/api/download", (req, res) => {
+  app.get("/api/download", async (req, res) => {
     try {
       const url = (req.query.url as string) || "";
       const format = (req.query.format as string) === "mp3" ? "mp3" : "mp4";
@@ -130,6 +130,12 @@ async function startServer() {
 
       const platform = detectPlatform(url);
       const platformName = platform === "unknown" ? "MEDIA" : platform.toUpperCase();
+
+      // Resolve TikTok shortened URLs before download
+      let resolvedUrl = url;
+      if (platform === "tiktok") {
+        resolvedUrl = await resolveTikTokUrl(url);
+      }
 
       const cleanTitle = rawTitle
         .replace(/[^a-zA-Z0-9 \-_áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/g, "")
@@ -184,7 +190,7 @@ async function startServer() {
         );
       }
 
-      args.push("-o", fileTemplate, url);
+      args.push("-o", fileTemplate, resolvedUrl);
 
       const executeDownload = (downloadArgs: string[], isRetry: boolean = false) => {
         execFile(YT_DLP_PATH, downloadArgs, { timeout: 1800000, maxBuffer: 200 * 1024 * 1024 }, async (error, stdout, stderr) => {
@@ -192,9 +198,9 @@ async function startServer() {
             console.error(`[DOWNLOAD] yt-dlp ERROR (retry=${isRetry}):`, error.message);
             console.error("[DOWNLOAD] stderr:", stderr);
 
-            // Try Cobalt API / Invidious fallback stream if yt-dlp gets blocked
-            console.log(`[DOWNLOAD] Attempting Cobalt API fallback for URL: ${url}`);
-            const cobaltUrl = await fetchCobaltDownloadUrl(url, quality, format);
+            // Try Cobalt API fallback for ALL platforms (TikTok, Instagram, Facebook, YouTube)
+            console.log(`[DOWNLOAD] Attempting Cobalt API fallback for URL: ${resolvedUrl}`);
+            const cobaltUrl = await fetchCobaltDownloadUrl(resolvedUrl, quality, format);
             if (cobaltUrl) {
               console.log(`[DOWNLOAD] Cobalt fallback stream URL found! Redirecting client.`);
               if (!res.headersSent) {

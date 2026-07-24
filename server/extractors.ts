@@ -22,7 +22,7 @@ export function detectPlatform(url: string): PlatformType {
   if (lower.includes('youtube.com') || lower.includes('youtu.be')) {
     return 'youtube';
   }
-  if (lower.includes('tiktok.com')) {
+  if (lower.includes('tiktok.com') || lower.includes('vm.tiktok')) {
     return 'tiktok';
   }
   if (lower.includes('instagram.com') || lower.includes('instagr.am')) {
@@ -32,6 +32,29 @@ export function detectPlatform(url: string): PlatformType {
     return 'facebook';
   }
   return 'unknown';
+}
+
+// Resolve TikTok shortened URLs (vm.tiktok.com) to full URLs
+export async function resolveTikTokUrl(url: string): Promise<string> {
+  if (!url.includes('vm.tiktok') && !url.includes('/t/')) {
+    return url;
+  }
+  try {
+    const res = await fetch(url, {
+      method: 'HEAD',
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15'
+      }
+    });
+    if (res.url && res.url.includes('tiktok.com')) {
+      console.log(`[TIKTOK] Resolved short URL: ${url} -> ${res.url}`);
+      return res.url;
+    }
+  } catch (err) {
+    console.warn('[TIKTOK] Failed to resolve short URL:', err);
+  }
+  return url;
 }
 
 export function extractYouTubeId(url: string): string | null {
@@ -341,7 +364,12 @@ export function getYtDlpJson(url: string): Promise<any> {
 
 export async function fetchVideoDetails(url: string): Promise<VideoInfo> {
   const platform = detectPlatform(url);
-  const cleanUrl = url.trim();
+  let cleanUrl = url.trim();
+
+  // Resolve TikTok shortened URLs before processing
+  if (platform === 'tiktok') {
+    cleanUrl = await resolveTikTokUrl(cleanUrl);
+  }
 
   try {
     const info = await getYtDlpJson(cleanUrl);
