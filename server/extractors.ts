@@ -363,6 +363,9 @@ export async function fetchVideoDetails(url: string): Promise<VideoInfo> {
       maxHeight = info.height;
     }
 
+    const description = info.description || info.comment || '';
+    const tags = Array.isArray(info.tags) ? info.tags : [];
+
     return {
       url: cleanUrl,
       platform,
@@ -371,6 +374,7 @@ export async function fetchVideoDetails(url: string): Promise<VideoInfo> {
       thumbnail: thumbnail || 'https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=800&q=80',
       duration,
       views,
+      description,
       qualities: generateDefaultQualities(maxHeight)
     };
   } catch (error) {

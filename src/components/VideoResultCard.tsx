@@ -286,6 +286,46 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
 
         </div>
 
+        {/* Description & Hashtags Metadata Section */}
+        {info.description && (
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                📝 Descrição do Vídeo & Hashtags
+              </span>
+            </div>
+            
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/10 text-xs text-slate-300 leading-relaxed font-sans max-h-48 overflow-y-auto whitespace-pre-line selection:bg-rose-500 selection:text-white">
+              {info.description}
+            </div>
+
+            {/* Extracted Hashtags Badges */}
+            {(() => {
+              const hashtags = info.description.match(/#[a-zA-Z0-9_áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]+/g);
+              if (!hashtags || hashtags.length === 0) return null;
+              const uniqueTags = Array.from(new Set(hashtags));
+              return (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {uniqueTags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2.5 py-1 text-[11px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25 rounded-lg hover:bg-indigo-500/25 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (navigator.clipboard) {
+                          navigator.clipboard.writeText(tag);
+                        }
+                      }}
+                      title="Clique para copiar a hashtag"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
       </div>
     </div>
   );
