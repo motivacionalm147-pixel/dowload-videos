@@ -63,19 +63,26 @@ public class MainActivity extends Activity {
 
         setContentView(root);
 
-        // -- WebView Settings --
+        // Hardware acceleration & Layer optimization for super smooth performance
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+
+        // -- Optimized Ultra-Fast WebView Settings --
         WebSettings ws = webView.getSettings();
         ws.setJavaScriptEnabled(true);
         ws.setDomStorageEnabled(true);
         ws.setDatabaseEnabled(true);
         ws.setAllowFileAccess(true);
         ws.setAllowContentAccess(true);
-        ws.setJavaScriptCanOpenWindowsAutomatically(true);
+        ws.setJavaScriptCanOpenWindowsAutomatically(false);
         ws.setUseWideViewPort(true);
         ws.setLoadWithOverviewMode(true);
         ws.setSupportZoom(false);
         ws.setBuiltInZoomControls(false);
-        ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+        ws.setDisplayZoomControls(false);
+        ws.setRenderPriority(WebSettings.RenderPriority.HIGH);
+        ws.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK); // Aggressive cache for instant load
         ws.setMediaPlaybackRequiresUserGesture(false);
 
         // Force Chrome Mobile user-agent so the site renders CSS/JS identically
