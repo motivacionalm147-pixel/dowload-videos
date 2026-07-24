@@ -53,36 +53,46 @@ const PIPED_INSTANCES = [
   'https://pipedapi.adminforge.de'
 ];
 
+const COBALT_INSTANCES = [
+  "https://api.cobalt.tools",
+  "https://cobalt-api.kwiatekm.com",
+  "https://cobalt.qtfy.at",
+  "https://co.wuk.sh"
+];
+
 export async function fetchCobaltDownloadUrl(url: string, quality: string, format: string): Promise<string | null> {
-  try {
-    let videoQuality = "1080";
-    if (quality.includes("2160") || quality.includes("4k") || quality.includes("4K")) videoQuality = "max";
-    else if (quality.includes("1440") || quality.includes("2k") || quality.includes("2K")) videoQuality = "1440";
-    else if (quality.includes("1080")) videoQuality = "1080";
-    else if (quality.includes("720")) videoQuality = "720";
-    else if (quality.includes("480")) videoQuality = "480";
-    else if (quality.includes("360")) videoQuality = "360";
+  let videoQuality = "1080";
+  if (quality.includes("2160") || quality.includes("4k") || quality.includes("4K")) videoQuality = "max";
+  else if (quality.includes("1440") || quality.includes("2k") || quality.includes("2K")) videoQuality = "1440";
+  else if (quality.includes("1080")) videoQuality = "1080";
+  else if (quality.includes("720")) videoQuality = "720";
+  else if (quality.includes("480")) videoQuality = "480";
+  else if (quality.includes("360")) videoQuality = "360";
 
-    const res = await fetch("https://api.cobalt.tools/api/json", {
-      method: "POST",
-      headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        url,
-        videoQuality,
-        isAudioOnly: format === "mp3",
-        aFormat: "mp3"
-      })
-    });
+  for (const instance of COBALT_INSTANCES) {
+    try {
+      const res = await fetch(`${instance}/api/json`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          url,
+          videoQuality,
+          isAudioOnly: format === "mp3",
+          aFormat: "mp3"
+        })
+      });
 
-    if (res.ok) {
-      const data: any = await res.json();
-      if (data.url) return data.url;
+      if (res.ok) {
+        const data: any = await res.json();
+        if (data.url) return data.url;
+        if (data.picker && data.picker.length > 0) return data.picker[0].url;
+      }
+    } catch (err) {
+      console.warn(`Cobalt API error on ${instance}:`, err);
     }
-  } catch (err) {
-    console.warn("Cobalt API fallback error:", err);
   }
   return null;
 }
