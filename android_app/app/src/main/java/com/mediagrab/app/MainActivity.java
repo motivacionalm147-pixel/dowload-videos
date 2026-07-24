@@ -2,7 +2,12 @@ package com.mediagrab.app;
 
 import android.app.Activity;
 import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Color;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.net.http.SslError;
 import android.os.Build;
@@ -24,15 +29,54 @@ import android.widget.FrameLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import java.io.File;
+
 public class MainActivity extends Activity {
 
     private WebView webView;
     private ProgressBar progressBar;
     private static final String APP_URL = "https://dowload-videos.onrender.com";
+    private static final String FOLDER_NAME = "Midia Download LK";
+
+    private BroadcastReceiver downloadCompleteReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(action)) {
+                long downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (downloadId != -1) {
+                    // Trigger Android Gallery MediaScan so video immediately appears in Gallery album
+                    File folder = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), FOLDER_NAME);
+                    if (folder.exists()) {
+                        MediaScannerConnection.scanFile(context,
+                                new String[]{folder.getAbsolutePath()},
+                                null,
+                                (path, uri) -> {
+                                    // Media scanned into Gallery album
+                                });
+                    }
+
+                    Toast.makeText(getApplicationContext(),
+                            "🎉 Download concluído! Abra na Galeria (Pasta: Mídia Download LK)",
+                            Toast.LENGTH_LONG).show();
+                }
+            }
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Register download complete receiver
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadCompleteReceiver,
+                    new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                    Context.RECEIVER_EXPORTED);
+        } else {
+            registerReceiver(downloadCompleteReceiver,
+                    new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        }
 
         // Fullscreen immersive + dark status bar
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -120,7 +164,8 @@ public class MainActivity extends Activity {
             }
         });
 
-        // Download listener — delegates file downloads to Android's native DownloadManager
+        // Background Download listener — delegates file downloads to Android's native system DownloadManager
+        // Downloads continue seamlessly in the background even if the app is closed!
         webView.setDownloadListener(new DownloadListener() {
             @Override
             public void onDownloadStart(String url, String userAgent,
@@ -138,18 +183,27 @@ public class MainActivity extends Activity {
 
                     String filename = URLUtil.guessFileName(url, contentDisposition, mimeType);
                     request.setTitle(filename);
-                    request.setDescription("Baixando arquivo de mídia...");
+                    request.setDescription("Baixando m\u00eddia em segundo plano...");
+                    
+                    // Show background progress in Android notification bar & notify upon completion
                     request.setNotificationVisibility(
                             DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+
+                    // Save directly into custom Galeria folder: "Movies/Midia Download LK"
+                    String subPath = FOLDER_NAME + File.separator + filename;
                     request.setDestinationInExternalPublicDir(
-                            Environment.DIRECTORY_DOWNLOADS, filename);
+                            Environment.DIRECTORY_MOVIES, subPath);
+
+                    // Allow background downloading over Mobile Data & Wi-Fi
+                    request.setAllowedOverMetered(true);
+                    request.setAllowedOverRoaming(true);
 
                     DownloadManager dm =
                             (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
                     if (dm != null) {
-                        dm.enqueue(request);
+                        long id = dm.enqueue(request);
                         Toast.makeText(getApplicationContext(),
-                                "✅ Download iniciado! Veja nas notificações.",
+                                "📥 Download iniciado em segundo plano! Acompanhe na notificação.",
                                 Toast.LENGTH_LONG).show();
                     }
                 } catch (Exception e) {
@@ -162,6 +216,16 @@ public class MainActivity extends Activity {
 
         // Load the site
         webView.loadUrl(APP_URL);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        try {
+            unregisterReceiver(downloadCompleteReceiver);
+        } catch (Exception e) {
+            // Unregistered
+        }
     }
 
     @Override
