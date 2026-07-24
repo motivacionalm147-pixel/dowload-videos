@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { execFile, execSync } from "child_process";
 import { createServer as createViteServer } from "vite";
-import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl, fetchCobaltDownloadUrl, resolveTikTokUrl, fetchTikTokDownloadUrl } from "./server/extractors.ts";
+import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl, fetchCobaltDownloadUrl, resolveTikTokUrl, fetchTikTokDownloadUrl, fetchInstagramDownloadUrl } from "./server/extractors.ts";
 import ffmpegPath from "ffmpeg-static";
 
 const isWin = process.platform === "win32";
@@ -198,7 +198,7 @@ async function startServer() {
             console.error(`[DOWNLOAD] yt-dlp ERROR (retry=${isRetry}):`, error.message);
             console.error("[DOWNLOAD] stderr:", stderr);
 
-            // 1. Try dedicated TikTok API fallback first
+            // 1. Try dedicated TikTok API fallback
             if (platform === "tiktok") {
               console.log(`[DOWNLOAD] Attempting dedicated TikTok API fallback for: ${resolvedUrl}`);
               const tikTokUrl = await fetchTikTokDownloadUrl(resolvedUrl, format);
@@ -206,6 +206,18 @@ async function startServer() {
                 console.log(`[DOWNLOAD] TikTok direct stream URL found! Redirecting client.`);
                 if (!res.headersSent) {
                   return res.redirect(tikTokUrl);
+                }
+              }
+            }
+
+            // 2. Try dedicated Instagram API fallback
+            if (platform === "instagram") {
+              console.log(`[DOWNLOAD] Attempting dedicated Instagram API fallback for: ${resolvedUrl}`);
+              const instaUrl = await fetchInstagramDownloadUrl(resolvedUrl, format);
+              if (instaUrl) {
+                console.log(`[DOWNLOAD] Instagram direct stream URL found! Redirecting client.`);
+                if (!res.headersSent) {
+                  return res.redirect(instaUrl);
                 }
               }
             }

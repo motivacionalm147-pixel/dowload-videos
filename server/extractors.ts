@@ -112,6 +112,33 @@ export async function fetchTikTokDownloadUrl(url: string, format: string): Promi
   return null;
 }
 
+export async function fetchInstagramDownloadUrl(url: string, format: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://fastddl.com/api/ig/media?url=${encodeURIComponent(url)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15'
+      }
+    });
+    if (res.ok) {
+      const data: any = await res.json();
+      if (data && data.url) {
+        console.log('[INSTAGRAM API] Direct stream obtained via FastDDL');
+        return data.url;
+      }
+      if (data && Array.isArray(data.medias) && data.medias.length > 0) {
+        const stream = data.medias.find((m: any) => m.extension === 'mp4' || m.type === 'video');
+        if (stream?.url) {
+          console.log('[INSTAGRAM API] Direct stream media obtained via FastDDL');
+          return stream.url;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[INSTAGRAM API] FastDDL failed:', err);
+  }
+  return null;
+}
+
 export async function fetchCobaltDownloadUrl(url: string, quality: string, format: string): Promise<string | null> {
   let videoQuality = "1080";
   if (quality.includes("2160") || quality.includes("4k") || quality.includes("4K")) videoQuality = "max";
