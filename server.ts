@@ -153,6 +153,8 @@ async function startServer() {
         "--no-playlist",
         "--no-warnings",
         "--force-ipv4",
+        "--no-mtime",
+        "--no-add-metadata",
         "--extractor-args", "youtube:player_client=mweb,ios,android,tv_embedded",
         "--user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
       ];

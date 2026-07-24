@@ -139,6 +139,9 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
           <div className="flex items-center gap-2">
             {getPlatformBadge()}
             <span className="text-xs text-slate-400 font-medium">Link Verificado</span>
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full" title="Todos os metadados (marca d'água, autor original, tags e data) são removidos automaticamente no download">
+              ✨ Metadados Removidos
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
