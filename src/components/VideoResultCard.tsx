@@ -213,11 +213,31 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
           {/* Title & Creator Details */}
           <div className="md:col-span-7 flex flex-col justify-between h-full">
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-white leading-snug mb-3">
-                {info.title}
-              </h2>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <h2 className="text-lg sm:text-xl font-bold text-white leading-snug">
+                  {isTranslated && translatedDescription ? translatedDescription : info.title}
+                </h2>
 
-              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mb-6">
+                <button
+                  onClick={handleTranslate}
+                  disabled={isTranslating}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all shrink-0 ${
+                    isTranslated 
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-lg shadow-emerald-950/30'
+                      : 'bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border-indigo-500/30'
+                  }`}
+                  title={isTranslated ? 'Ver texto original' : 'Traduzir título, descrição e # hashtags para Português'}
+                >
+                  {isTranslating ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Languages className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isTranslating ? 'Traduzindo...' : isTranslated ? 'Ver Original' : 'Traduzir PT-BR'}</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mb-4">
                 <span className="flex items-center gap-1.5 font-medium text-slate-300">
                   <User className="w-3.5 h-3.5 text-rose-400" />
                   {info.author}
@@ -229,6 +249,15 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
                   </span>
                 )}
               </div>
+
+              {/* Optional Description / Hashtag Box */}
+              {info.description && info.description.trim() !== info.title.trim() && (
+                <div className="mb-6 p-3 rounded-2xl bg-slate-950/50 border border-white/5 text-xs text-slate-300 leading-relaxed max-h-28 overflow-y-auto custom-scrollbar">
+                  <div className="whitespace-pre-wrap">
+                    {isTranslated && translatedDescription ? translatedDescription : info.description}
+                  </div>
+                </div>
+              )}
 
               {/* Format Toggle Bar (MP4 vs MP3) */}
               <div className="mb-6">
@@ -366,7 +395,8 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
             {/* Extracted Hashtags Badges */}
             {(() => {
               const currentText = isTranslated && translatedDescription ? translatedDescription : info.description;
-              const hashtags = currentText.match(/#[a-zA-Z0-9_áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]+/g);
+              const tagRegex = new RegExp('#[a-zA-Z0-9_]+', 'g');
+              const hashtags = currentText.match(tagRegex);
               if (!hashtags || hashtags.length === 0) return null;
               const uniqueTags = Array.from(new Set(hashtags));
               return (
