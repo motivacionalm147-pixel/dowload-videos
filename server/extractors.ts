@@ -113,6 +113,7 @@ export async function fetchTikTokDownloadUrl(url: string, format: string): Promi
 }
 
 export async function fetchInstagramDownloadUrl(url: string, format: string): Promise<string | null> {
+  // 1. Try FastDDL Instagram API proxy
   try {
     const res = await fetch(`https://fastddl.com/api/ig/media?url=${encodeURIComponent(url)}`, {
       headers: {
@@ -121,21 +122,34 @@ export async function fetchInstagramDownloadUrl(url: string, format: string): Pr
     });
     if (res.ok) {
       const data: any = await res.json();
-      if (data && data.url) {
-        console.log('[INSTAGRAM API] Direct stream obtained via FastDDL');
-        return data.url;
-      }
+      if (data && data.url) return data.url;
       if (data && Array.isArray(data.medias) && data.medias.length > 0) {
         const stream = data.medias.find((m: any) => m.extension === 'mp4' || m.type === 'video');
-        if (stream?.url) {
-          console.log('[INSTAGRAM API] Direct stream media obtained via FastDDL');
-          return stream.url;
-        }
+        if (stream?.url) return stream.url;
       }
     }
-  } catch (err) {
-    console.warn('[INSTAGRAM API] FastDDL failed:', err);
-  }
+  } catch (err) {}
+
+  // 2. Try Instasave public proxy API
+  try {
+    const res = await fetch(`https://api.vkrdown.com/v4/instasave?url=${encodeURIComponent(url)}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    if (res.ok) {
+      const data: any = await res.json();
+      if (data && data.data && data.data.url) return data.data.url;
+      if (data && data.data && Array.isArray(data.data.downloads) && data.data.downloads.length > 0) {
+        return data.data.downloads[0].url;
+      }
+    }
+  } catch (err) {}
+
+  // 3. Try Cobalt API fallback for Instagram
+  try {
+    const cobaltUrl = await fetchCobaltDownloadUrl(url, "1080p", format);
+    if (cobaltUrl) return cobaltUrl;
+  } catch (err) {}
+
   return null;
 }
 
