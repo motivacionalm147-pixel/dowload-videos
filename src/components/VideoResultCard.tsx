@@ -74,10 +74,32 @@ const FONT_COLORS = [
 ];
 
 export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownloadStart }) => {
+  const safeQualities = (info && Array.isArray(info.qualities) && info.qualities.length > 0)
+    ? info.qualities
+    : [
+        { id: '1080p', label: '1080p Full HD', resolution: '1920x1080', estimatedSize: '~45 MB', format: 'mp4', qualityKey: '1080p', isPopular: true },
+        { id: '720p', label: '720p HD', resolution: '1280x720', estimatedSize: '~25 MB', format: 'mp4', qualityKey: '720p' },
+        { id: '320k', label: 'MP3 Áudio 320k', bitrate: '320 kbps', estimatedSize: '~10 MB', format: 'mp3', qualityKey: '320k' }
+      ];
+
   const [activeFormat, setActiveFormat] = useState<DownloadFormat>('mp4');
   const [selectedQuality, setSelectedQuality] = useState<QualityOption>(
-    info.qualities.find(q => q.format === 'mp4' && q.qualityKey === '1080p') || info.qualities[0]
+    safeQualities.find(q => q.format === 'mp4' && q.qualityKey === '1080p') || safeQualities[0]
   );
+  
+  // Filter qualities based on active format
+  const availableQualities = safeQualities.filter(q => q && q.format === activeFormat);
+
+  const handleFormatChange = (format: DownloadFormat) => {
+    setActiveFormat(format);
+    const defaultQuality = safeQualities.find(q => q && q.format === format && (q.isPopular || q.qualityKey === '1080p' || q.qualityKey === '320k')) ||
+      safeQualities.find(q => q && q.format === format) ||
+      safeQualities[0];
+    if (defaultQuality) {
+      setSelectedQuality(defaultQuality);
+    }
+  };
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);

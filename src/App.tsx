@@ -76,8 +76,28 @@ export default function App() {
         throw new Error(errorData.error || 'Não foi possível buscar as informações do vídeo.');
       }
 
-      const data: VideoInfo = await response.json();
-      setVideoInfo(data);
+      const data = await response.json();
+
+      // Validate and ensure qualities array is never undefined/null
+      if (!data || typeof data !== 'object') {
+        throw new Error('Resposta inválida do servidor.');
+      }
+      if (!Array.isArray(data.qualities) || data.qualities.length === 0) {
+        data.qualities = [
+          { id: '1080p', label: '1080p Full HD', resolution: '1920x1080', estimatedSize: '~45 MB', format: 'mp4', qualityKey: '1080p', isPopular: true },
+          { id: '720p', label: '720p HD', resolution: '1280x720', estimatedSize: '~25 MB', format: 'mp4', qualityKey: '720p' },
+          { id: '480p', label: '480p SD', resolution: '854x480', estimatedSize: '~15 MB', format: 'mp4', qualityKey: '480p' },
+          { id: '320k', label: 'MP3 Áudio HD', bitrate: '320 kbps', estimatedSize: '~10 MB', format: 'mp3', qualityKey: '320k', isPopular: true },
+          { id: '128k', label: 'MP3 Áudio Padrão', bitrate: '128 kbps', estimatedSize: '~5 MB', format: 'mp3', qualityKey: '128k' },
+        ];
+      }
+      if (!data.title) data.title = 'Vídeo Selecionado';
+      if (!data.author) data.author = 'Criador';
+      if (!data.platform) data.platform = 'unknown';
+      if (!data.duration) data.duration = '00:00';
+      if (!data.thumbnail) data.thumbnail = '';
+
+      setVideoInfo(data as VideoInfo);
       setActiveTab('single');
     } catch (err: any) {
       console.error('Fetch video error:', err);
