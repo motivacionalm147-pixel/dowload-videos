@@ -151,6 +151,12 @@ async function startServer() {
         "--user-agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
       ];
 
+      // Use cookies.txt if present to authenticate requests and bypass bot checks
+      const cookiesPath = path.resolve("cookies.txt");
+      if (fs.existsSync(cookiesPath)) {
+        args.push("--cookies", cookiesPath);
+      }
+
       // Only add ffmpeg-location if ffmpeg exists
       if (ffmpegPath && fs.existsSync(ffmpegPath)) {
         args.push("--ffmpeg-location", ffmpegPath);

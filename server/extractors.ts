@@ -266,6 +266,7 @@ export function generateDefaultQualities(maxHeight: number = 1080): QualityOptio
 
 export function getYtDlpJson(url: string): Promise<any> {
   return new Promise((resolve, reject) => {
+    const cookiesPath = path.resolve("cookies.txt");
     const args = [
       '-j',
       '--no-playlist',
@@ -273,8 +274,13 @@ export function getYtDlpJson(url: string): Promise<any> {
       '--force-ipv4',
       '--extractor-args', 'youtube:player_client=tv_embedded,android,ios,mweb',
       '--user-agent', 'Mozilla/5.0 (SmartTV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) Version/6.0 TV Safari/537.36',
-      url
     ];
+
+    if (fs.existsSync(cookiesPath)) {
+      args.push('--cookies', cookiesPath);
+    }
+
+    args.push(url);
 
     execFile(YT_DLP_PATH, args, { timeout: 30000, maxBuffer: 20 * 1024 * 1024 }, (error, stdout) => {
       if (error) {
