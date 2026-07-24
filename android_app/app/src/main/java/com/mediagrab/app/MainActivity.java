@@ -126,7 +126,7 @@ public class MainActivity extends Activity {
         ws.setBuiltInZoomControls(false);
         ws.setDisplayZoomControls(false);
         ws.setRenderPriority(WebSettings.RenderPriority.HIGH);
-        ws.setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK); // Aggressive cache for instant load
+        ws.setCacheMode(WebSettings.LOAD_DEFAULT); // Always check network for newest site updates
         ws.setMediaPlaybackRequiresUserGesture(false);
 
         // Force Chrome Mobile user-agent so the site renders CSS/JS identically
