@@ -152,10 +152,10 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
   // Build full download URL with optional burn-in subtitle and trimming params
   const getCustomDownloadUrl = () => {
     const params = new URLSearchParams({
-      url: info.url,
+      url: info?.url || '',
       format: activeFormat,
-      quality: selectedQuality.qualityKey,
-      title: info.title
+      quality: selectedQuality?.qualityKey || '1080p',
+      title: info?.title || 'video'
     });
 
     if (enableTrimmer) {
@@ -165,7 +165,7 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
 
     if (enableSubtitle && subtitleText) {
       params.append('subtitle', subtitleText);
-      params.append('fontColor', selectedColor.hex);
+      params.append('fontColor', selectedColor?.hex || '#FACC15');
       params.append('fontSize', fontSize.toString());
       params.append('posX', Math.round(textPosition.x).toString());
       params.append('posY', Math.round(textPosition.y).toString());
@@ -620,7 +620,7 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5">
                   {availableQualities.map((q) => {
-                    const isSelected = selectedQuality.id === q.id;
+                    const isSelected = selectedQuality && selectedQuality.id === q.id;
                     return (
                       <button
                         key={q.id}
@@ -664,7 +664,7 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
                 >
                   <Download className="w-5 h-5" />
                   <span>
-                    Baixar {activeFormat.toUpperCase()} ({selectedQuality.qualityKey})
+                    Baixar {activeFormat.toUpperCase()} ({selectedQuality?.qualityKey || '1080p'})
                   </span>
                 </button>
               </div>
