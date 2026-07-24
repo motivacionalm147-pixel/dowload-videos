@@ -3,7 +3,7 @@ import path from "path";
 import fs from "fs";
 import { execFile, execSync } from "child_process";
 import { createServer as createViteServer } from "vite";
-import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl, fetchCobaltDownloadUrl, resolveTikTokUrl } from "./server/extractors.ts";
+import { fetchVideoDetails, detectPlatform, extractYouTubeId, fetchYouTubeFallbackStreamUrl, fetchCobaltDownloadUrl, resolveTikTokUrl, fetchTikTokDownloadUrl } from "./server/extractors.ts";
 import ffmpegPath from "ffmpeg-static";
 
 const isWin = process.platform === "win32";
@@ -198,7 +198,19 @@ async function startServer() {
             console.error(`[DOWNLOAD] yt-dlp ERROR (retry=${isRetry}):`, error.message);
             console.error("[DOWNLOAD] stderr:", stderr);
 
-            // Try Cobalt API fallback for ALL platforms (TikTok, Instagram, Facebook, YouTube)
+            // 1. Try dedicated TikTok API fallback first
+            if (platform === "tiktok") {
+              console.log(`[DOWNLOAD] Attempting dedicated TikTok API fallback for: ${resolvedUrl}`);
+              const tikTokUrl = await fetchTikTokDownloadUrl(resolvedUrl, format);
+              if (tikTokUrl) {
+                console.log(`[DOWNLOAD] TikTok direct stream URL found! Redirecting client.`);
+                if (!res.headersSent) {
+                  return res.redirect(tikTokUrl);
+                }
+              }
+            }
+
+            // 2. Try Cobalt API fallback for ALL platforms
             console.log(`[DOWNLOAD] Attempting Cobalt API fallback for URL: ${resolvedUrl}`);
             const cobaltUrl = await fetchCobaltDownloadUrl(resolvedUrl, quality, format);
             if (cobaltUrl) {

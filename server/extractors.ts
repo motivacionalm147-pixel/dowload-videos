@@ -83,6 +83,35 @@ const COBALT_INSTANCES = [
   "https://co.wuk.sh"
 ];
 
+export async function fetchTikTokDownloadUrl(url: string, format: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15'
+      }
+    });
+    if (res.ok) {
+      const json: any = await res.json();
+      if (json && json.data) {
+        if (format === 'mp3' && json.data.music) {
+          console.log('[TIKTOK API] Found direct MP3 URL via Tikwm');
+          return json.data.music;
+        }
+        if (json.data.play) {
+          console.log('[TIKTOK API] Found direct HD MP4 URL via Tikwm');
+          return json.data.play;
+        }
+        if (json.data.wmplay) {
+          return json.data.wmplay;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[TIKTOK API] Tikwm fetch failed:', err);
+  }
+  return null;
+}
+
 export async function fetchCobaltDownloadUrl(url: string, quality: string, format: string): Promise<string | null> {
   let videoQuality = "1080";
   if (quality.includes("2160") || quality.includes("4k") || quality.includes("4K")) videoQuality = "max";
