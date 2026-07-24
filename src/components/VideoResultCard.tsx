@@ -15,7 +15,9 @@ import {
   Instagram, 
   Facebook, 
   FileVideo,
-  FileAudio
+  FileAudio,
+  Languages,
+  Loader2
 } from 'lucide-react';
 
 interface VideoResultCardProps {
@@ -42,6 +44,43 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+
+  // Translation State
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [isTranslated, setIsTranslated] = useState(false);
+  const [translatedDescription, setTranslatedDescription] = useState<string | null>(null);
+
+  const handleTranslate = async () => {
+    if (isTranslated) {
+      setIsTranslated(false);
+      return;
+    }
+
+    if (translatedDescription) {
+      setIsTranslated(true);
+      return;
+    }
+
+    if (!info.description) return;
+
+    setIsTranslating(true);
+    try {
+      // Use free Google Translate API endpoint
+      const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=pt&dt=t&q=${encodeURIComponent(info.description)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data[0] && Array.isArray(data[0])) {
+          const translatedText = data[0].map((part: any) => part[0]).join('');
+          setTranslatedDescription(translatedText);
+          setIsTranslated(true);
+        }
+      }
+    } catch (err) {
+      console.warn('Translation error:', err);
+    } finally {
+      setIsTranslating(false);
+    }
+  };
 
   const handleFormatChange = (format: DownloadFormat) => {
     setActiveFormat(format);
@@ -289,19 +328,45 @@ export const VideoResultCard: React.FC<VideoResultCardProps> = ({ info, onDownlo
         {/* Description & Hashtags Metadata Section */}
         {info.description && (
           <div className="mt-6 pt-6 border-t border-white/10">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                 📝 Descrição do Vídeo & Hashtags
               </span>
+
+              {/* Translate Button */}
+              <button
+                type="button"
+                onClick={handleTranslate}
+                disabled={isTranslating}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border shrink-0 ${
+                  isTranslated
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-indigo-600/20 text-indigo-300 border-indigo-500/30 hover:bg-indigo-600/30'
+                }`}
+                title="Traduzir descrição e hashtags para Português (Brasil)"
+              >
+                {isTranslating ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                    <span>Traduzindo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Languages className="w-3.5 h-3.5" />
+                    <span>{isTranslated ? 'Ver Original' : 'Traduzir p/ Português 🇧🇷'}</span>
+                  </>
+                )}
+              </button>
             </div>
             
             <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/10 text-xs text-slate-300 leading-relaxed font-sans max-h-48 overflow-y-auto whitespace-pre-line selection:bg-rose-500 selection:text-white">
-              {info.description}
+              {isTranslated && translatedDescription ? translatedDescription : info.description}
             </div>
 
             {/* Extracted Hashtags Badges */}
             {(() => {
-              const hashtags = info.description.match(/#[a-zA-Z0-9_áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]+/g);
+              const currentText = isTranslated && translatedDescription ? translatedDescription : info.description;
+              const hashtags = currentText.match(/#[a-zA-Z0-9_áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]+/g);
               if (!hashtags || hashtags.length === 0) return null;
               const uniqueTags = Array.from(new Set(hashtags));
               return (
